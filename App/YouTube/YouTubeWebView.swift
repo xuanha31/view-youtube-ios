@@ -19,8 +19,14 @@ struct YouTubeWebView: UIViewRepresentable {
         config.mediaTypesRequiringUserActionForPlayback = []
         config.defaultWebpagePreferences.allowsContentJavaScript = true
 
+        // Ad blocking can be turned off in Settings to isolate playback issues
+        // (YouTube's anti-adblock can refuse playback when ads are blocked).
+        let adBlockEnabled = AppGroup.defaults.object(forKey: "adBlockEnabled") as? Bool ?? true
+
         // Layer 2 ad blocking: inject DOM cleanup script.
-        config.userContentController.addUserScript(AdBlocker.makeUserScript())
+        if adBlockEnabled {
+            config.userContentController.addUserScript(AdBlocker.makeUserScript())
+        }
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -34,7 +40,7 @@ struct YouTubeWebView: UIViewRepresentable {
 
         // Layer 1 ad blocking: add the compiled content rule list, then load.
         Task {
-            if let ruleList = await AdBlocker.contentRuleList() {
+            if adBlockEnabled, let ruleList = await AdBlocker.contentRuleList() {
                 config.userContentController.add(ruleList)
             }
             await MainActor.run { webView.load(URLRequest(url: url)) }

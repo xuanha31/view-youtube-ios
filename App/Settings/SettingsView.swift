@@ -6,9 +6,21 @@ struct SettingsView: View {
     @State private var apiKey = KeychainStore.get("nextDNSApiKey") ?? ""
     @State private var saved = false
 
+    @AppStorage("adBlockEnabled", store: AppGroup.defaults)
+    private var adBlockEnabled = true
+
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Toggle("Chặn quảng cáo YouTube", isOn: $adBlockEnabled)
+                } header: {
+                    Text("YouTube")
+                } footer: {
+                    Text("Nếu video báo lỗi 'Mã lượt phát', thử TẮT chặn ads rồi mở lại tab "
+                         + "YouTube — YouTube có thể từ chối phát khi phát hiện chặn ads. "
+                         + "Đổi tùy chọn này cần mở lại app để áp dụng.")
+                }
                 Section {
                     TextField("Profile ID", text: $profileID)
                         .textInputAutocapitalization(.never)

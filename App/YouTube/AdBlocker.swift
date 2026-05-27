@@ -12,17 +12,17 @@ enum AdBlocker {
 
     /// Content-blocker rules. `url-filter` is a regex matched against the URL.
     /// Kept conservative on purpose: blocking googlevideo.com would also break
-    /// real video, so we only target ad/track hosts.
+    /// real video, so we only target third-party ad hosts.
+    ///
+    /// IMPORTANT: we intentionally do NOT block YouTube's own endpoints
+    /// (/youtubei/, /api/stats, /ptracking). Blocking those trips YouTube's
+    /// anti-adblock detection, which then refuses playback with a
+    /// "Playback ID" error. Ads are suppressed in the DOM instead (layer 2).
     static let contentRuleListJSON = """
     [
       { "trigger": { "url-filter": ".*doubleclick\\\\.net.*" },        "action": { "type": "block" } },
       { "trigger": { "url-filter": ".*googleadservices\\\\.com.*" },   "action": { "type": "block" } },
-      { "trigger": { "url-filter": ".*googlesyndication\\\\.com.*" },  "action": { "type": "block" } },
-      { "trigger": { "url-filter": ".*google-analytics\\\\.com.*" },   "action": { "type": "block" } },
-      { "trigger": { "url-filter": ".*/pagead/.*" },                   "action": { "type": "block" } },
-      { "trigger": { "url-filter": ".*/api/stats/ads.*" },             "action": { "type": "block" } },
-      { "trigger": { "url-filter": ".*/youtubei/v1/log_event.*" },     "action": { "type": "block" } },
-      { "trigger": { "url-filter": ".*/ptracking.*" },                 "action": { "type": "block" } }
+      { "trigger": { "url-filter": ".*googlesyndication\\\\.com.*" },  "action": { "type": "block" } }
     ]
     """
 
@@ -45,15 +45,17 @@ enum AdBlocker {
 
     // MARK: - Layer 2: DOM cleanup + auto-skip
 
-    /// Runs every 400ms inside the page: removes ad containers and clicks the
-    /// "Skip Ad" button. The `.ad-showing` fast-forward is a fallback for ads
-    /// without a skip button.
+    /// Runs every 500ms inside the page: removes feed/overlay ad containers and
+    /// clicks "Skip Ad" when it appears.
+    ///
+    /// NOTE: we deliberately do NOT remove the active player module or
+    /// fast-forward the <video> while an ad is showing. Doing so used to break
+    /// real playback and could be flagged by YouTube. We only click the native
+    /// skip button and strip non-player ad slots.
     static let domAdRemovalJS = """
     (function () {
       'use strict';
       const AD_SELECTORS = [
-        '.ytp-ad-module',
-        '.video-ads',
         'ytd-ad-slot-renderer',
         'ytd-in-feed-ad-layout-renderer',
         'ytd-promoted-video-renderer',
@@ -70,14 +72,9 @@ enum AdBlocker {
           '.ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern'
         );
         if (skip) skip.click();
-        const player = document.querySelector('.html5-video-player');
-        const video = document.querySelector('video');
-        if (player && player.classList.contains('ad-showing') && video && video.duration) {
-          video.currentTime = video.duration; // fast-forward unskippable ad
-        }
       }
       clean();
-      setInterval(clean, 400);
+      setInterval(clean, 500);
     })();
     """
 
