@@ -2,7 +2,7 @@ name: ViewTube
 options:
   bundleIdPrefix: com.viewtube
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.0"
   createIntermediateGroups: true
 
 settings:
