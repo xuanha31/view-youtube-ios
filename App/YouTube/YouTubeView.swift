@@ -7,6 +7,8 @@ final class YouTubeViewModel: ObservableObject {
     @Published var canGoForward = false
     /// Set to request the web view navigate somewhere (search, home, etc.).
     @Published var pendingURL: URL?
+    /// Set to run a one-shot JS command in the web view (e.g. PiP).
+    @Published var pendingJS: String?
 
     static let home = URL(string: "https://m.youtube.com")!
 
@@ -16,6 +18,9 @@ final class YouTubeViewModel: ObservableObject {
     }
 
     func goHome() { pendingURL = YouTubeViewModel.home }
+
+    /// Toggle Picture-in-Picture for the currently playing video.
+    func togglePiP() { pendingJS = WebEnhancements.enterPiPJS }
 }
 
 struct YouTubeView: View {
@@ -37,6 +42,11 @@ struct YouTubeView: View {
                     ToolbarItem(placement: .topBarLeading) {
                         Button { model.goHome() } label: {
                             Image(systemName: "house.fill")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { model.togglePiP() } label: {
+                            Image(systemName: "pip.enter")
                         }
                     }
                 }

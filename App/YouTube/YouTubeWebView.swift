@@ -19,6 +19,10 @@ struct YouTubeWebView: UIViewRepresentable {
         config.mediaTypesRequiringUserActionForPlayback = []
         config.defaultWebpagePreferences.allowsContentJavaScript = true
 
+        // Playback enhancements (always on): background audio + hide "Open app".
+        config.userContentController.addUserScript(WebEnhancements.backgroundPlayScript())
+        config.userContentController.addUserScript(WebEnhancements.hideOpenAppScript())
+
         // Ad blocking can be turned off in Settings to isolate playback issues
         // (YouTube's anti-adblock can refuse playback when ads are blocked).
         let adBlockEnabled = AppGroup.defaults.object(forKey: "adBlockEnabled") as? Bool ?? true
@@ -53,6 +57,11 @@ struct YouTubeWebView: UIViewRepresentable {
         if let pending = model.pendingURL, webView.url != pending {
             webView.load(URLRequest(url: pending))
             DispatchQueue.main.async { model.pendingURL = nil }
+        }
+        // One-shot JS commands (e.g. enter Picture-in-Picture).
+        if let js = model.pendingJS {
+            webView.evaluateJavaScript(js)
+            DispatchQueue.main.async { model.pendingJS = nil }
         }
     }
 }
