@@ -31,10 +31,10 @@ struct YouTubeWebView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
-        // Mobile UA so YouTube serves m.youtube.com layout the selectors target.
-        webView.customUserAgent =
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) " +
-            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+        // Use the WebView's native Safari user-agent. A hardcoded/mismatched UA
+        // makes YouTube reject playback ("Playback ID" error); letting WebKit
+        // report its real version is what lets the HTML5 player work, the same
+        // way it does in Safari.
 
         context.coordinator.attach(webView)
 
