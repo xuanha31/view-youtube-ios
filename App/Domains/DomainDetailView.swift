@@ -20,7 +20,7 @@ struct DomainDetailView: View {
                                value: entry.lastSeen.formatted(date: .abbreviated, time: .shortened))
             }
 
-            Section("Domain là gì?") {
+            Section {
                 if isLoading {
                     HStack { ProgressView(); Text("Đang tra cứu...").foregroundStyle(.secondary) }
                 } else if let info {
@@ -38,6 +38,8 @@ struct DomainDetailView: View {
                     Text("Không tra cứu được thông tin domain.")
                         .foregroundStyle(.secondary)
                 }
+            } header: {
+                Text("Domain là gì?")
             } footer: {
                 Text("Nguồn: RDAP (rdap.org). 'Phân loại' chỉ là gợi ý dựa trên tên miền, không chắc chắn.")
             }

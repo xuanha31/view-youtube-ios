@@ -9,7 +9,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("NextDNS") {
+                Section {
                     TextField("Profile ID", text: $profileID)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -22,6 +22,8 @@ struct SettingsView: View {
                         Label("Đã lưu", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green).font(.footnote)
                     }
+                } header: {
+                    Text("NextDNS")
                 } footer: {
                     Text("Đăng ký miễn phí tại nextdns.io. Profile ID + API key dùng cho "
                          + "chặn ads (DNS) và quản lý domain (tab Domains).")
