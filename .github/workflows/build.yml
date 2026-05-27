@@ -1,0 +1,86 @@
+name: Build IPA (unsigned for SideStore)
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (unsigned archive)
+        run: |
+          xcodebuild \
+            -project ViewTube.xcodeproj \
+            -scheme ViewTube \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/ViewTube.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Package unsigned IPA
+        run: |
+          cd build/ViewTube.xcarchive/Products/Applications
+          mkdir -p Payload
+          mv ViewTube.app Payload/
+          zip -qry "$GITHUB_WORKSPACE/ViewTube.ipa" Payload
+          echo "Packaged ViewTube.ipa"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ViewTube-unsigned-ipa
+          path: ViewTube.ipa
+
+      # On a version tag, attach the IPA to a GitHub Release so SideStore
+      # (via apps.json) can pick up updates automatically.
+      - name: Attach to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ViewTube.ipa
+
+      # Update the SideStore source (apps.json) with this release's version,
+      # download URL and size, then commit it back to main.
+      - name: Update SideStore source (apps.json)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME}"            # e.g. v1.0.0
+          VERSION="${TAG#v}"                  # strip leading v -> 1.0.0
+          SIZE=$(stat -f%z ViewTube.ipa)
+          DATE=$(date +%Y-%m-%d)
+          OWNER_REPO="${GITHUB_REPOSITORY}"   # owner/repo
+          URL="https://github.com/${OWNER_REPO}/releases/download/${TAG}/ViewTube.ipa"
+
+          # Replace placeholder owner everywhere (idempotent).
+          OWNER="${OWNER_REPO%%/*}"
+          sed -i '' "s/REPLACE_OWNER/${OWNER}/g" apps.json
+
+          # Patch the first app's first version entry.
+          tmp=$(mktemp)
+          jq --arg v "$VERSION" --arg d "$DATE" --arg u "$URL" --argjson s "$SIZE" '
+            .apps[0].versions[0].version = $v
+            | .apps[0].versions[0].date = $d
+            | .apps[0].versions[0].downloadURL = $u
+            | .apps[0].versions[0].size = $s
+          ' apps.json > "$tmp" && mv "$tmp" apps.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps.json
+          git commit -m "chore: update SideStore source for ${TAG}" || echo "no changes"
+          git push origin HEAD:main || echo "push skipped"

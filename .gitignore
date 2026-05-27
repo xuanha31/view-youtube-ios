@@ -1,0 +1,16 @@
+# Xcode / build
+build/
+DerivedData/
+*.xcarchive
+*.ipa
+*.xcuserstate
+
+# XcodeGen output (regenerated from project.yml)
+ViewTube.xcodeproj/
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.swiftpm/
+.build/

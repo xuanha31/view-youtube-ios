@@ -1,0 +1,42 @@
+{
+  "name": "ViewTube Source",
+  "identifier": "com.viewtube.source",
+  "subtitle": "Ad-free YouTube + DNS ad-block for iOS",
+  "description": "Sideload source for ViewTube via SideStore/AltStore.",
+  "iconURL": "https://raw.githubusercontent.com/xuanha31/view-youtube-ios/main/Assets/icon.png",
+  "website": "https://github.com/xuanha31/view-youtube-ios",
+  "tintColor": "FF0000",
+  "apps": [
+    {
+      "name": "ViewTube",
+      "bundleIdentifier": "com.viewtube.app",
+      "developerName": "ViewTube",
+      "subtitle": "YouTube không quảng cáo + chặn ads DNS",
+      "localizedDescription": "Xem YouTube không quảng cáo, Picture-in-Picture, nghe khi khóa màn hình. Chặn quảng cáo ở tầng DNS qua NextDNS và quản lý domain thủ công (Allow/Block).\n\nLưu ý: chỉ chặn ads trong app này, không can thiệp app YouTube chính thức. App hết hạn 7 ngày với free cert — bật auto-refresh trong SideStore.",
+      "iconURL": "https://raw.githubusercontent.com/xuanha31/view-youtube-ios/main/Assets/icon.png",
+      "tintColor": "FF0000",
+      "category": "utilities",
+      "screenshotURLs": [],
+      "versions": [
+        {
+          "version": "1.0.0",
+          "buildVersion": "1",
+          "date": "2026-05-27",
+          "localizedDescription": "Bản phát hành đầu tiên: YouTube không ads + PiP + nghe nền + DNS ad-block + quản lý domain.",
+          "downloadURL": "https://github.com/xuanha31/view-youtube-ios/releases/download/v1.0.0/ViewTube.ipa",
+          "size": 0,
+          "minOSVersion": "16.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [
+          "com.apple.security.application-groups"
+        ],
+        "privacy": {
+          "NSAppTransportSecurity": "HTTPS cho YouTube web + NextDNS API"
+        }
+      }
+    }
+  ],
+  "news": []
+}
