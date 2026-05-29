@@ -25,32 +25,13 @@ final class YouTubeViewModel: ObservableObject {
 
 struct YouTubeView: View {
     @StateObject private var model = YouTubeViewModel()
-    @State private var searchText = ""
 
     var body: some View {
-        NavigationStack {
-            YouTubeWebView(url: YouTubeViewModel.home, model: model)
-                .ignoresSafeArea(edges: .bottom)
-                .navigationTitle(model.pageTitle)
-                .navigationBarTitleDisplayMode(.inline)
-                .searchable(text: $searchText, prompt: "Search YouTube")
-                .onSubmit(of: .search) {
-                    guard !searchText.isEmpty else { return }
-                    model.search(searchText)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button { model.goHome() } label: {
-                            Image(systemName: "house.fill")
-                        }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { model.togglePiP() } label: {
-                            Image(systemName: "pip.enter")
-                        }
-                    }
-                }
-        }
+        // Full-bleed web view with no iOS browser chrome (no title bar / search
+        // field / toolbar) so the app looks native — we rely on YouTube's own
+        // top bar for home/search and on auto-PiP for background playback.
+        YouTubeWebView(url: YouTubeViewModel.home, model: model)
+            .ignoresSafeArea(edges: .bottom)
     }
 }
 
