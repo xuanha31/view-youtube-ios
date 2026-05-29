@@ -153,6 +153,64 @@ enum WebEnhancements {
 
     // MARK: - Picture-in-Picture
 
+    /// Floating PiP button injected into the page (since we removed the native
+    /// toolbar). It appears whenever a real video is loaded and toggles system
+    /// Picture-in-Picture on tap. Selector-free — it just appends a fixed-
+    /// position button to <body>, so it survives YouTube UI changes.
+    static let pipButtonJS = """
+    (function () {
+      'use strict';
+      var ID = '__vt_pip_btn';
+
+      function ensureButton() {
+        var existing = document.getElementById(ID);
+        if (existing) return existing;
+        if (!document.body) return null;
+        var b = document.createElement('button');
+        b.id = ID;
+        b.setAttribute('aria-label', 'Picture in Picture');
+        b.innerHTML =
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">' +
+          '<path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18' +
+          'c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>';
+        b.style.cssText =
+          'position:fixed;z-index:2147483647;bottom:96px;right:12px;' +
+          'width:44px;height:44px;border-radius:22px;border:none;' +
+          'background:rgba(0,0,0,0.55);color:#fff;display:none;' +
+          'align-items:center;justify-content:center;padding:0;cursor:pointer;' +
+          '-webkit-tap-highlight-color:transparent;';
+        b.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var v = document.querySelector('video');
+          if (v && typeof v.webkitSetPresentationMode === 'function') {
+            v.webkitSetPresentationMode(
+              v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture');
+          }
+        }, true);
+        document.body.appendChild(b);
+        return b;
+      }
+
+      function tick() {
+        var b = ensureButton();
+        if (!b) return;
+        var v = document.querySelector('video');
+        var ready = v && v.readyState > 0 && isFinite(v.duration) && v.duration > 0;
+        b.style.display = ready ? 'flex' : 'none';
+      }
+
+      setInterval(tick, 800);
+      tick();
+    })();
+    """
+
+    static func pipButtonScript() -> WKUserScript {
+        WKUserScript(source: pipButtonJS,
+                     injectionTime: .atDocumentEnd,
+                     forMainFrameOnly: true)
+    }
+
     /// JS to push the current <video> into PiP using the WebKit presentation
     /// API (YouTube's custom controls don't expose a native PiP button).
     static let enterPiPJS = """
