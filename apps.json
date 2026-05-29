@@ -20,7 +20,7 @@
       "versions": [
         {
           "version": "1.0.4",
-          "buildVersion": "1",
+          "buildVersion": "5",
           "date": "2026-05-29",
           "localizedDescription": "Bản phát hành đầu tiên: YouTube không ads + PiP + nghe nền + DNS ad-block + quản lý domain.",
           "downloadURL": "https://github.com/xuanha31/view-youtube-ios/releases/download/v1.0.4/ViewTube.ipa",

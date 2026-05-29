@@ -70,14 +70,21 @@ jobs:
           OWNER_REPO="${GITHUB_REPOSITORY}"   # owner/repo
           URL="https://github.com/${OWNER_REPO}/releases/download/${TAG}/ViewTube.ipa"
 
+          # Read the real CFBundleVersion from the built app so apps.json's
+          # buildVersion always matches the IPA (SideStore VerificationError 5
+          # happens when they disagree).
+          APP_PLIST="build/ViewTube.xcarchive/Products/Applications/Payload/ViewTube.app/Info.plist"
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PLIST")
+
           # Replace placeholder owner everywhere (idempotent).
           OWNER="${OWNER_REPO%%/*}"
           sed -i '' "s/REPLACE_OWNER/${OWNER}/g" apps.json
 
           # Patch the first app's first version entry.
           tmp=$(mktemp)
-          jq --arg v "$VERSION" --arg d "$DATE" --arg u "$URL" --argjson s "$SIZE" '
+          jq --arg v "$VERSION" --arg b "$BUILD" --arg d "$DATE" --arg u "$URL" --argjson s "$SIZE" '
             .apps[0].versions[0].version = $v
+            | .apps[0].versions[0].buildVersion = $b
             | .apps[0].versions[0].date = $d
             | .apps[0].versions[0].downloadURL = $u
             | .apps[0].versions[0].size = $s
