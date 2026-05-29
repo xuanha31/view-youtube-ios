@@ -18,6 +18,33 @@ final class AudioSessionManager {
             print("[AudioSession] activate failed: \(error)")
         }
         configureRemoteCommands()
+        observeInterruptions()
+    }
+
+    // MARK: - Interruption recovery
+
+    /// When the screen locks, iOS can slip in a brief audio interruption that
+    /// pauses the <video>. Because we spoof page-visibility, YouTube never
+    /// auto-resumes, so playback just stops. We listen for the interruption to
+    /// end, re-activate the session, and re-issue play() ourselves.
+    private func observeInterruptions() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: nil)
+    }
+
+    @objc private func handleInterruption(_ note: Notification) {
+        guard let info = note.userInfo,
+              let raw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        guard type == .ended else { return }
+        let opts = AVAudioSession.InterruptionOptions(
+            rawValue: info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
+        guard opts.contains(.shouldResume) else { return }
+        try? AVAudioSession.sharedInstance().setActive(true)
+        onCommand?(.play)
     }
 
     // MARK: - Lock screen / Control Center controls

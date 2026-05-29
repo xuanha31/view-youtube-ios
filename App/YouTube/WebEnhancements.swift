@@ -71,6 +71,86 @@ enum WebEnhancements {
                      forMainFrameOnly: false)
     }
 
+    // MARK: - Keep the playlist alive
+
+    /// On YouTube web, accidentally closing the queue panel drops the `list=`
+    /// param from the URL, so "play through the playlist" stops. We keep it
+    /// alive two ways, neither of which reloads the page (so audio is never
+    /// interrupted):
+    ///
+    ///  1) Selector-free safety net: the close action keeps the SAME video
+    ///     (`v=` unchanged) but removes `list=`. When we see exactly that, we
+    ///     put `list=` back via history.replaceState. Navigating to a *different*
+    ///     video changes `v=`, so this never forces the old list onto unrelated
+    ///     videos.
+    ///  2) Best-effort: swallow taps on the queue panel's close ("X") button so
+    ///     the list isn't dismissed in the first place. Scoped to the playlist
+    ///     container, so wrong selectors simply do nothing (no over-blocking).
+    static let keepPlaylistJS = """
+    (function () {
+      'use strict';
+      var lastV = null, lastList = null, busy = false;
+
+      function read() {
+        try {
+          var p = new URLSearchParams(location.search);
+          return { v: p.get('v'), list: p.get('list') };
+        } catch (e) { return { v: null, list: null }; }
+      }
+
+      function sync() {
+        if (busy) return;
+        var c = read();
+        // Same video, list just disappeared -> the queue was closed. Restore it.
+        if (c.v && c.v === lastV && lastList && !c.list && /\\/watch/.test(location.pathname)) {
+          try {
+            busy = true;
+            var u = new URL(location.href);
+            u.searchParams.set('list', lastList);
+            history.replaceState(history.state, '', u.toString());
+            c.list = lastList;
+          } catch (e) {} finally { busy = false; }
+        }
+        lastV = c.v;
+        if (c.list) lastList = c.list;
+      }
+
+      ['pushState', 'replaceState'].forEach(function (m) {
+        var orig = history[m];
+        history[m] = function () {
+          var r = orig.apply(this, arguments);
+          try { sync(); } catch (e) {}
+          return r;
+        };
+      });
+      window.addEventListener('popstate', sync, true);
+      setInterval(sync, 500);   // catch URL changes that skip the history API
+      sync();
+
+      // (2) Block accidental taps on the queue's close button.
+      function isQueueClose(node) {
+        var btn = node && node.closest && node.closest('button, a, [role=button]');
+        if (!btn) return false;
+        var inQueue = btn.closest(
+          'ytm-playlist-panel-renderer, [class*="playlist-panel"], [class*="watch-queue"]');
+        if (!inQueue) return false;
+        var label = (btn.getAttribute('aria-label') || '').toLowerCase();
+        return /close|dismiss|đóng|hide|ẩn/.test(label);
+      }
+      document.addEventListener('click', function (e) {
+        try {
+          if (isQueueClose(e.target)) { e.stopImmediatePropagation(); e.preventDefault(); }
+        } catch (err) {}
+      }, true);
+    })();
+    """
+
+    static func keepPlaylistScript() -> WKUserScript {
+        WKUserScript(source: keepPlaylistJS,
+                     injectionTime: .atDocumentStart,
+                     forMainFrameOnly: false)
+    }
+
     // MARK: - Picture-in-Picture
 
     /// JS to push the current <video> into PiP using the WebKit presentation
@@ -82,6 +162,19 @@ enum WebEnhancements {
         v.webkitSetPresentationMode(
           v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture'
         );
+      }
+    })();
+    """
+
+    /// Auto-PiP fired when the app is backgrounded: only *enter* PiP, and only
+    /// when a video is actually playing and not already in PiP. Keeps audio
+    /// alive with the screen off without the user tapping the PiP button.
+    static let autoEnterPiPJS = """
+    (function () {
+      var v = document.querySelector('video');
+      if (v && !v.paused && typeof v.webkitSetPresentationMode === 'function'
+          && v.webkitPresentationMode !== 'picture-in-picture') {
+        v.webkitSetPresentationMode('picture-in-picture');
       }
     })();
     """

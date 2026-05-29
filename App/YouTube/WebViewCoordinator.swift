@@ -1,4 +1,5 @@
 import WebKit
+import UIKit
 
 /// Bridges the WKWebView lifecycle to the SwiftUI model and routes Lock Screen
 /// transport commands back into the web player via JavaScript.
@@ -17,6 +18,19 @@ final class WebViewCoordinator: NSObject, WKNavigationDelegate {
 
     func attach(_ webView: WKWebView) {
         self.webView = webView
+        // Auto-enter PiP when the app is backgrounded (e.g. screen lock) so
+        // audio keeps playing without the user tapping the PiP button. We use
+        // didEnterBackground rather than willResignActive so that transient
+        // foreground losses (Control Center, notification banner) don't pop PiP.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil)
+    }
+
+    @objc private func appDidEnterBackground() {
+        webView?.evaluateJavaScript(WebEnhancements.autoEnterPiPJS)
     }
 
     // MARK: - WKNavigationDelegate

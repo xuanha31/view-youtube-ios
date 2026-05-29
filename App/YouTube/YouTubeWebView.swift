@@ -19,9 +19,11 @@ struct YouTubeWebView: UIViewRepresentable {
         config.mediaTypesRequiringUserActionForPlayback = []
         config.defaultWebpagePreferences.allowsContentJavaScript = true
 
-        // Playback enhancements (always on): background audio + hide "Open app".
+        // Playback enhancements (always on): background audio + hide "Open app"
+        // + keep the playlist queue from being dropped on accidental close.
         config.userContentController.addUserScript(WebEnhancements.backgroundPlayScript())
         config.userContentController.addUserScript(WebEnhancements.hideOpenAppScript())
+        config.userContentController.addUserScript(WebEnhancements.keepPlaylistScript())
 
         // Ad blocking can be turned off in Settings to isolate playback issues
         // (YouTube's anti-adblock can refuse playback when ads are blocked).
