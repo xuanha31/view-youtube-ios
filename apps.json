@@ -19,12 +19,12 @@
       "screenshotURLs": [],
       "versions": [
         {
-          "version": "1.0.7",
-          "buildVersion": "8",
+          "version": "1.0.8",
+          "buildVersion": "9",
           "date": "2026-06-10",
           "localizedDescription": "Bản phát hành đầu tiên: YouTube không ads + PiP + nghe nền + DNS ad-block + quản lý domain.",
-          "downloadURL": "https://github.com/xuanha31/view-youtube-ios/releases/download/v1.0.7/ViewTube.ipa",
-          "size": 2114868,
+          "downloadURL": "https://github.com/xuanha31/view-youtube-ios/releases/download/v1.0.8/ViewTube.ipa",
+          "size": 2116039,
           "minOSVersion": "17.0"
         }
       ],
