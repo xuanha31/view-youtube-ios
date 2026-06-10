@@ -46,20 +46,57 @@ enum WebEnhancements {
     static let hideOpenAppJS = """
     (function () {
       'use strict';
+      var OPEN_APP_TEXTS = [
+        'mở ứng dụng', 'open app', 'watch in youtube app',
+        'xem trong ứng dụng youtube', 'open in app', 'mở trong ứng dụng'
+      ];
+      var PROMO_SELECTORS = [
+        'ytm-app-promo-renderer', 'ytm-mealbar-promo-renderer',
+        'ytm-confirmation-dialog-renderer', 'ytm-bottom-sheet-container',
+        '#app-promo', 'ytd-app-promo-renderer'
+      ];
+
+      function isOpenAppEl(el) {
+        var t = (el.textContent || '').trim().toLowerCase();
+        var aria = (el.getAttribute('aria-label') || '').toLowerCase();
+        return OPEN_APP_TEXTS.some(function (s) { return t === s || aria.indexOf(s) !== -1; });
+      }
+
       function hide() {
+        // Remove known promo component selectors
+        PROMO_SELECTORS.forEach(function (sel) {
+          document.querySelectorAll(sel).forEach(function (n) { n.remove(); });
+        });
+
+        // Find "Watch in YouTube app" / "Open app" buttons and remove parent modal
         document.querySelectorAll('a, button').forEach(function (el) {
-          var t = (el.textContent || '').trim();
-          var aria = (el.getAttribute('aria-label') || '');
-          if (t === 'Mở ứng dụng' || t === 'Open app' ||
-              /mở ứng dụng/i.test(aria) || /open app/i.test(aria)) {
+          if (!isOpenAppEl(el)) return;
+          // Walk up to find the closest modal/sheet/overlay container
+          var container = el.closest(
+            'ytm-confirmation-dialog-renderer, ytm-bottom-sheet-container, ' +
+            'ytm-app-promo-renderer, ytm-mealbar-promo-renderer, ' +
+            '[class*="modal"], [class*="overlay"], [class*="dialog"], [class*="bottom-sheet"]'
+          );
+          if (container) {
+            container.remove();
+          } else {
+            // Fallback: hide the button itself
             el.style.display = 'none';
           }
         });
-        ['ytm-app-promo-renderer', 'ytm-mealbar-promo-renderer',
-         '#app-promo', 'ytd-app-promo-renderer'].forEach(function (sel) {
-          document.querySelectorAll(sel).forEach(function (n) { n.remove(); });
+
+        // Remove any overlay containing "Get the best experience" heading
+        document.querySelectorAll('h2, h3, [class*="title"], [class*="heading"]').forEach(function (el) {
+          if (/get the best experience/i.test(el.textContent || '')) {
+            var container = el.closest(
+              '[class*="modal"], [class*="overlay"], [class*="dialog"], ' +
+              '[class*="bottom-sheet"], ytm-confirmation-dialog-renderer'
+            );
+            if (container) container.remove();
+          }
         });
       }
+
       hide();
       setInterval(hide, 800);
     })();

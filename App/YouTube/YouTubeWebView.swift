@@ -38,15 +38,20 @@ struct YouTubeWebView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
-        // Use the WebView's native Safari user-agent. A hardcoded/mismatched UA
-        // makes YouTube reject playback ("Playback ID" error); letting WebKit
-        // report its real version is what lets the HTML5 player work, the same
-        // way it does in Safari.
 
         context.coordinator.attach(webView)
 
         // Layer 1 ad blocking: add the compiled content rule list, then load.
         Task {
+            // WKWebView's default UA omits "Version/X.X" that real Safari includes.
+            // YouTube uses this gap to detect WebViews and restrict subscription feeds
+            // + show "Watch in YouTube app" modals. Read the real UA and inject the
+            // Version token so we look like Safari without breaking the player.
+            if let rawUA = try? await webView.evaluateJavaScript("navigator.userAgent") as? String,
+               !rawUA.isEmpty, !rawUA.contains("Version/") {
+                let patchedUA = rawUA.replacingOccurrences(of: " Mobile/", with: " Version/18.1 Mobile/")
+                await MainActor.run { webView.customUserAgent = patchedUA }
+            }
             if adBlockEnabled, let ruleList = await AdBlocker.contentRuleList() {
                 config.userContentController.add(ruleList)
             }
