@@ -46,14 +46,15 @@ enum WebEnhancements {
     static let hideOpenAppJS = """
     (function () {
       'use strict';
-      var OPEN_APP_TEXTS = [
-        'mở ứng dụng', 'open app', 'watch in youtube app',
-        'xem trong ứng dụng youtube', 'open in app', 'mở trong ứng dụng'
-      ];
+      var MODAL_PATTERN = /watch in youtube app|get the best experience|open in app|mở trong ứng dụng youtube/i;
       var PROMO_SELECTORS = [
         'ytm-app-promo-renderer', 'ytm-mealbar-promo-renderer',
         'ytm-confirmation-dialog-renderer', 'ytm-bottom-sheet-container',
         '#app-promo', 'ytd-app-promo-renderer'
+      ];
+      var OPEN_APP_TEXTS = [
+        'mở ứng dụng', 'open app', 'watch in youtube app',
+        'xem trong ứng dụng youtube', 'open in app', 'mở trong ứng dụng'
       ];
 
       function isOpenAppEl(el) {
@@ -62,38 +63,40 @@ enum WebEnhancements {
         return OPEN_APP_TEXTS.some(function (s) { return t === s || aria.indexOf(s) !== -1; });
       }
 
+      // Candidate modal container selectors — most specific first.
+      var CONTAINER_SEL =
+        'ytm-confirmation-dialog-renderer, ytm-bottom-sheet-container, ' +
+        'ytm-app-promo-renderer, ytm-mealbar-promo-renderer, ' +
+        '[role="dialog"], [role="alertdialog"]';
+
       function hide() {
-        // Remove known promo component selectors
+        // 1. Remove known component selectors unconditionally.
         PROMO_SELECTORS.forEach(function (sel) {
           document.querySelectorAll(sel).forEach(function (n) { n.remove(); });
         });
 
-        // Find "Watch in YouTube app" / "Open app" buttons and remove parent modal
-        document.querySelectorAll('a, button').forEach(function (el) {
-          if (!isOpenAppEl(el)) return;
-          // Walk up to find the closest modal/sheet/overlay container
-          var container = el.closest(
-            'ytm-confirmation-dialog-renderer, ytm-bottom-sheet-container, ' +
-            'ytm-app-promo-renderer, ytm-mealbar-promo-renderer, ' +
-            '[class*="modal"], [class*="overlay"], [class*="dialog"], [class*="bottom-sheet"]'
-          );
-          if (container) {
-            container.remove();
-          } else {
-            // Fallback: hide the button itself
-            el.style.display = 'none';
-          }
+        // 2. Remove any dialog/role="dialog" whose text matches the promo pattern.
+        document.querySelectorAll(CONTAINER_SEL).forEach(function (modal) {
+          if (MODAL_PATTERN.test(modal.textContent || '')) modal.remove();
         });
 
-        // Remove any overlay containing "Get the best experience" heading
-        document.querySelectorAll('h2, h3, [class*="title"], [class*="heading"]').forEach(function (el) {
-          if (/get the best experience/i.test(el.textContent || '')) {
-            var container = el.closest(
-              '[class*="modal"], [class*="overlay"], [class*="dialog"], ' +
-              '[class*="bottom-sheet"], ytm-confirmation-dialog-renderer'
-            );
-            if (container) container.remove();
+        // 3. Find "Watch in YouTube app" / "Open app" buttons, click × then remove parent.
+        document.querySelectorAll('a, button').forEach(function (el) {
+          if (!isOpenAppEl(el)) return;
+          var container = el.closest(CONTAINER_SEL);
+          if (container) { container.remove(); return; }
+          // Fallback: walk up 6 levels looking for a small-child-count wrapper.
+          var p = el.parentElement;
+          for (var i = 0; i < 6 && p && p !== document.body; i++, p = p.parentElement) {
+            if (p.children.length <= 4) { p.remove(); return; }
           }
+          el.style.display = 'none';
+        });
+
+        // 4. Auto-click the × close button inside any matching modal that survived.
+        document.querySelectorAll('button[aria-label="Close"], button[aria-label="Đóng"]').forEach(function (btn) {
+          var modal = btn.closest(CONTAINER_SEL + ', [class*="modal"], [class*="overlay"]');
+          if (modal && MODAL_PATTERN.test(modal.textContent || '')) btn.click();
         });
       }
 
