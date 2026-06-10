@@ -255,6 +255,98 @@ enum WebEnhancements {
                      forMainFrameOnly: true)
     }
 
+    // MARK: - Playlist reopen button
+
+    /// Floating button that appears on /watch pages when a playlist is active
+    /// but the queue panel has been closed. Tap to reopen the panel without
+    /// reloading the page or interrupting playback.
+    static let playlistButtonJS = """
+    (function () {
+      'use strict';
+      var ID = '__vt_pl_btn';
+
+      function hasPlaylist() {
+        try { return !!new URLSearchParams(location.search).get('list'); } catch (e) { return false; }
+      }
+
+      function isPanelVisible() {
+        var panel = document.querySelector('ytm-playlist-panel-renderer');
+        if (!panel) return false;
+        var s = window.getComputedStyle(panel);
+        return s.display !== 'none' && s.visibility !== 'hidden' && panel.offsetParent !== null;
+      }
+
+      function reopenPanel() {
+        // 1. Try YouTube's own queue toggle button in the player.
+        var btn = document.querySelector(
+          '.ytp-playlist-menu-button, ' +
+          'button[aria-label*="playlist" i], button[aria-label*="queue" i], ' +
+          'button[aria-label*="danh sách" i], button[aria-label*="hàng chờ" i]'
+        );
+        if (btn) { btn.click(); return; }
+
+        // 2. Try un-hiding the panel component directly.
+        var panel = document.querySelector('ytm-playlist-panel-renderer');
+        if (panel) {
+          panel.style.display = '';
+          panel.style.visibility = '';
+          panel.removeAttribute('hidden');
+          panel.removeAttribute('collapsed');
+          return;
+        }
+
+        // 3. Tap the playlist title/index overlay that YouTube renders in the video.
+        var overlay = document.querySelector(
+          '.ytp-playlist-title, [class*="playlist-panel-header"], ' +
+          'ytm-playlist-panel-video-renderer:first-child'
+        );
+        if (overlay) { overlay.click(); }
+      }
+
+      function ensureButton() {
+        var existing = document.getElementById(ID);
+        if (existing) return existing;
+        if (!document.body) return null;
+        var b = document.createElement('button');
+        b.id = ID;
+        b.setAttribute('aria-label', 'Show playlist');
+        b.innerHTML =
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">' +
+          '<path d="M3 5h18v2H3zm0 4h12v2H3zm0 4h18v2H3zm0 4h12v2H3z"/>' +
+          '<polygon points="16,10 21,13 16,16"/></svg>';
+        b.style.cssText =
+          'position:fixed;z-index:2147483647;bottom:148px;right:12px;' +
+          'width:44px;height:44px;border-radius:22px;border:none;' +
+          'background:rgba(0,0,0,0.55);color:#fff;display:none;' +
+          'align-items:center;justify-content:center;padding:0;cursor:pointer;' +
+          '-webkit-tap-highlight-color:transparent;';
+        b.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          reopenPanel();
+        }, true);
+        document.body.appendChild(b);
+        return b;
+      }
+
+      function tick() {
+        var b = ensureButton();
+        if (!b) return;
+        var show = /\\/watch/.test(location.pathname) && hasPlaylist() && !isPanelVisible();
+        b.style.display = show ? 'flex' : 'none';
+      }
+
+      setInterval(tick, 800);
+      tick();
+    })();
+    """
+
+    static func playlistButtonScript() -> WKUserScript {
+        WKUserScript(source: playlistButtonJS,
+                     injectionTime: .atDocumentEnd,
+                     forMainFrameOnly: true)
+    }
+
     /// JS to push the current <video> into PiP using the WebKit presentation
     /// API (YouTube's custom controls don't expose a native PiP button).
     static let enterPiPJS = """

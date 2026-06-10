@@ -25,6 +25,7 @@ struct YouTubeWebView: UIViewRepresentable {
         config.userContentController.addUserScript(WebEnhancements.hideOpenAppScript())
         config.userContentController.addUserScript(WebEnhancements.keepPlaylistScript())
         config.userContentController.addUserScript(WebEnhancements.pipButtonScript())
+        config.userContentController.addUserScript(WebEnhancements.playlistButtonScript())
 
         // Ad blocking can be turned off in Settings to isolate playback issues
         // (YouTube's anti-adblock can refuse playback when ads are blocked).
