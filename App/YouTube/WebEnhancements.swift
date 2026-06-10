@@ -47,11 +47,21 @@ enum WebEnhancements {
     (function () {
       'use strict';
       var MODAL_PATTERN = /watch in youtube app|get the best experience|open in app|mở trong ứng dụng youtube/i;
-      var PROMO_SELECTORS = [
+
+      // Component selectors to remove unconditionally.
+      var PROMO_SELS = [
         'ytm-app-promo-renderer', 'ytm-mealbar-promo-renderer',
         'ytm-confirmation-dialog-renderer', 'ytm-bottom-sheet-container',
         '#app-promo', 'ytd-app-promo-renderer'
       ];
+
+      // Scrim/backdrop overlays that block touches after modal removal.
+      var SCRIM_SELS = [
+        'ytm-overlay-panel-scrim', 'tp-yt-iron-overlay-backdrop',
+        'iron-overlay-backdrop', 'ytm-bottom-sheet-overlay',
+        '[class*="scrim"]', '[class*="backdrop"]'
+      ];
+
       var OPEN_APP_TEXTS = [
         'mở ứng dụng', 'open app', 'watch in youtube app',
         'xem trong ứng dụng youtube', 'open in app', 'mở trong ứng dụng'
@@ -63,40 +73,34 @@ enum WebEnhancements {
         return OPEN_APP_TEXTS.some(function (s) { return t === s || aria.indexOf(s) !== -1; });
       }
 
-      // Candidate modal container selectors — most specific first.
-      var CONTAINER_SEL =
-        'ytm-confirmation-dialog-renderer, ytm-bottom-sheet-container, ' +
-        'ytm-app-promo-renderer, ytm-mealbar-promo-renderer, ' +
-        '[role="dialog"], [role="alertdialog"]';
-
       function hide() {
-        // 1. Remove known component selectors unconditionally.
-        PROMO_SELECTORS.forEach(function (sel) {
+        // 1. Remove known promo components.
+        PROMO_SELS.forEach(function (sel) {
           document.querySelectorAll(sel).forEach(function (n) { n.remove(); });
         });
 
-        // 2. Remove any dialog/role="dialog" whose text matches the promo pattern.
-        document.querySelectorAll(CONTAINER_SEL).forEach(function (modal) {
-          if (MODAL_PATTERN.test(modal.textContent || '')) modal.remove();
+        // 2. Remove scrim/backdrop that blocks all touches after modal removal.
+        SCRIM_SELS.forEach(function (sel) {
+          document.querySelectorAll(sel).forEach(function (n) { n.remove(); });
         });
 
-        // 3. Find "Watch in YouTube app" / "Open app" buttons, click × then remove parent.
+        // 3. Reset scroll/pointer locks YouTube sets when a modal opens.
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.documentElement.style.overflow = '';
+
+        // 4. Find role="dialog" containing promo text — click × or remove.
+        document.querySelectorAll('[role="dialog"], [role="alertdialog"]').forEach(function (modal) {
+          if (!MODAL_PATTERN.test(modal.textContent || '')) return;
+          var closeBtn = modal.querySelector(
+            'button[aria-label="Close"], button[aria-label="Dismiss"], button[aria-label="Đóng"]'
+          );
+          if (closeBtn) { closeBtn.click(); } else { modal.remove(); }
+        });
+
+        // 5. Individual button fallback — just hide, no DOM walk.
         document.querySelectorAll('a, button').forEach(function (el) {
-          if (!isOpenAppEl(el)) return;
-          var container = el.closest(CONTAINER_SEL);
-          if (container) { container.remove(); return; }
-          // Fallback: walk up 6 levels looking for a small-child-count wrapper.
-          var p = el.parentElement;
-          for (var i = 0; i < 6 && p && p !== document.body; i++, p = p.parentElement) {
-            if (p.children.length <= 4) { p.remove(); return; }
-          }
-          el.style.display = 'none';
-        });
-
-        // 4. Auto-click the × close button inside any matching modal that survived.
-        document.querySelectorAll('button[aria-label="Close"], button[aria-label="Đóng"]').forEach(function (btn) {
-          var modal = btn.closest(CONTAINER_SEL + ', [class*="modal"], [class*="overlay"]');
-          if (modal && MODAL_PATTERN.test(modal.textContent || '')) btn.click();
+          if (isOpenAppEl(el)) el.style.display = 'none';
         });
       }
 
